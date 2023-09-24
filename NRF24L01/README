@@ -1,0 +1,37 @@
+Tx Setup:
+          -  Disable the communication -> Chip Enable = 0L (ICs Pin)
+          -  Power Up the device -> PWR_UP = 1L (CONFIG Register)
+          -  Set the device as a Tx -> PRIM_RX = 0L (CONFIG Register)
+          -  Enable Auto-Acknowledgement on Pipe 0 -> EN_AA = 0x01
+          -  Enable Rx Address to Receive Acknowledgement Data Packet on Pipe 0 -> EN_RX_ADDR = 0x01
+          -  Setup Address Width -> SETUP_AW = 0x03 (Address is 5 Bytes Wide)
+          -  Setup Number of retransmissions and Delay between them -> SETUP_RETR = 0x1F (500us Delay + 15 Maximum Retransmissions)
+                      Notice: For a Transmission Speed of 2MBPS, the minimum delay between Transmissions is 500us.
+          -  Setup of RadioFrequency Channel -> RF_CH = any between 0:127
+          -  Setup of RadioFrequency Characteristics -> RF_SETUP (Air Data Rate,RF Output Power,LNA Activated)
+          -  Enable Dynamic Payload Length on Pipe 0 -> (FEATURE = 0x06) AND (DYNPD = 0x01) 
+          -  CLEAR Status Flags to hold the Interrupts Activated -> STATUS = 0x7E 
+                      Notice: Interrupt has occured when FLAG = 1L. To set the FLAG = 0L(to RESET it), we have to write 1L in the STATUS Register !!!
+          -  Set the Tx Address and Rx Address on Pipe 0 the same -> TX_ADDR == RX_ADDR_P0
+                      Notice: For a smooth flow, the Address should look like: 0xE7E7E7E7E7, not 0xEEEEEEEEEE
+                        why? Because the frequency shift is much more visible, so it is harder for the system to make errors.
+          -  Load the Payload for Transmission, through SPI;
+          -  Enable the communication -> Chip Enable = 1L (ICs Pin) for at least 10us! Hold it enabled for permanent communication.
+          -  Check for Interrupts on IRQ Pin (Falling Edge EXTI).
+          -  Check Status Interrupt to see which Interrupt has occured:  TX_DS = 1L (Transmission Succeeded)
+                                                                         MAX_RT = 1L (Transmission did not succeed, reset FLAG to try again, Payload not flushed from FIFO)
+
+Rx Setup:
+          -  Disable the communication -> Chip Enable = 0L (ICs Pin)
+          -  Power Up the device -> PWR_UP = 1L (CONFIG Register)
+          -  Set the device as a Rx -> PRIM_RX = 1L (CONFIG Register)
+          -  Enable Auto-Acknowledgement on whatever Pipe -> EN_AA
+          -  Enable Rx Address to Receive Acknowledgement Data Packet on whatever Pipe -> EN_RX_ADDR
+          -  Set the Payload width that you want to receive -> RX_PW_Px  (x stands for the Pipe number)
+          -  Setup Address Width -> SETUP_AW = 0x03 (Address is 5 Bytes Wide)
+          -  Set the Rx Address on the same Pipe, it has to be equal to the Tx Address -> RX_ADDR_Px = TX_ADDR
+          -  Enable the communication -> Chip Enable = 1L (ICs Pin) 
+                        Notice: After 130us, the Rx can receive data!
+          -  Check for Interrupts on IRQ Pin (Falling Edge EXTI)
+          -  Now only one interrupt might occur -> RX_DR = 1 (Data received)
+          -  Callback the Interrupt -> if the interrupt has occured, disable the communication (CE = 0L), extract the data through SPI, reset FLAGS, Repeat.
